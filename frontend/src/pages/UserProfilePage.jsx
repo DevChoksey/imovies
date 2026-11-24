@@ -39,15 +39,18 @@ const UserProfilePage = () => {
     try {
       setLoading(true);
 
-      // 1. Read from localStorage first (offline-proof & immediately reactive)
+      // 1. Read from localStorage (scoped to current user email when available)
       let localList = [];
       try {
-        localList = JSON.parse(localStorage.getItem('imovies_user_bookings') || '[]');
+        const rawLocal = JSON.parse(localStorage.getItem('imovies_user_bookings') || '[]');
+        localList = user?.email
+          ? rawLocal.filter((b) => !b.user?.email || b.user.email.toLowerCase() === user.email.toLowerCase())
+          : rawLocal;
       } catch (e) {
         console.error('Error reading local bookings:', e);
       }
 
-      // 2. Also try API if backend is reachable
+      // 2. Fetch authoritative records from MongoDB API when backend is reachable
       let apiList = [];
       if (HAS_REACHABLE_BACKEND) {
         try {
@@ -60,14 +63,14 @@ const UserProfilePage = () => {
         }
       }
 
-      // 3. Merge and deduplicate by bookingId / _id
-      const combined = [...localList];
-      apiList.forEach((apiBooking) => {
+      // 3. Merge prioritizing API records (latest status across devices) and deduplicate by bookingId / _id
+      const combined = [...apiList];
+      localList.forEach((localBooking) => {
         const exists = combined.some(
-          (b) => b._id === apiBooking._id || b.bookingId === apiBooking.bookingId
+          (b) => b._id === localBooking._id || b.bookingId === localBooking.bookingId
         );
         if (!exists) {
-          combined.push(apiBooking);
+          combined.push(localBooking);
         }
       });
 
@@ -79,7 +82,7 @@ const UserProfilePage = () => {
 
   useEffect(() => {
     fetchBookings();
-  }, []);
+  }, [user?.email]);
 
   const handleCopyId = (id) => {
     navigator.clipboard?.writeText(id);

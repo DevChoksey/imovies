@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const bookingSeatSchema = new mongoose.Schema({
   seatNumber: { type: String, required: true },
-  seatType: { type: String, enum: ['vip', 'premium', 'normal'], default: 'normal' },
+  seatType: { type: String, enum: ['vip', 'premium', 'normal', 'prime', 'classic'], default: 'normal' },
   price: { type: Number, required: true },
 });
 
@@ -23,17 +23,41 @@ const bookingSchema = new mongoose.Schema(
     show: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Show',
-      required: true,
+      default: null,
     },
     movie: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Movie',
-      required: true,
+      default: null,
     },
     theatre: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Theatre',
-      required: true,
+      default: null,
+    },
+    showDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    movieDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    theatreDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    transactionId: {
+      type: String,
+      default: '',
+    },
+    paymentMethod: {
+      type: String,
+      default: 'Card',
+    },
+    auditTrail: {
+      type: Array,
+      default: [],
     },
     seats: [bookingSeatSchema],
     totalAmount: {

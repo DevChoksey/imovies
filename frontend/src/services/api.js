@@ -9,12 +9,14 @@ export const isEndpointReachable = (rawUrl) => {
 };
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
+const isRemoteApiUrl = Boolean(rawApiUrl && !/localhost|127\.0\.0\.1/i.test(rawApiUrl));
 export const HAS_REACHABLE_BACKEND = isEndpointReachable(rawApiUrl);
 const API_BASE_URL = rawApiUrl || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 4000,
+  // Remote cloud servers (e.g. Render free tier) can take 20-40s on cold start
+  timeout: isRemoteApiUrl ? 45000 : 4000,
   headers: {
     'Content-Type': 'application/json',
   },

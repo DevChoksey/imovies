@@ -26,25 +26,55 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
+// Trust reverse proxy headers (Render / Railway / Nginx) for rate limiting
+app.set('trust proxy', 1);
+
+const allowedOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((o) => o.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser clients (Postman, curl, mobile apps, health checks)
+    if (!origin) return callback(null, true);
+    const normalized = origin.replace(/\/$/, '');
+    if (
+      allowedOrigins.length === 0 ||
+      allowedOrigins.includes('*') ||
+      allowedOrigins.includes(normalized) ||
+      normalized.endsWith('.vercel.app') ||
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized)
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS policy blocked origin: ${origin}`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+};
+
 // Initialize Socket.io with CORS configuration
 const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true,
-  },
+  cors: corsOptions,
 });
 
 // Setup Real-time seat tracking socket events
 setupSeatSocket(io);
 
 // Core Middlewares
-app.use(cors({
-  origin: process.env.CLIENT_URL || '*',
-  credentials: true,
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Root & Health check endpoints
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    service: 'IMovies Backend API',
+    health: '/api/health',
+  });
+});
 
 // Express API Rate Limiting (Security & DDoS prevention)
 const apiLimiter = rateLimit({

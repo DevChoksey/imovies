@@ -57,6 +57,7 @@ const PaymentPage = () => {
       setLoading(true);
 
       let createdBooking = null;
+      let dispatchedEmailByServer = false;
       try {
         if (!HAS_REACHABLE_BACKEND) {
           throw new Error('Offline/Vercel static frontend mode');
@@ -70,17 +71,22 @@ const PaymentPage = () => {
           upiId,
         });
 
-        // 2. Create booking in database
+        // 2. Create booking in MongoDB database (supports both DB ObjectId shows & Indore catalog shows)
         const bookingRes = await bookingService.createBooking({
           showId: selectedShow._id,
           seatNumbers,
+          seats: selectedSeats,
           paymentMethod,
           cardLast4: cardNumber.slice(-4),
           upiId,
+          movieDetails: selectedShow.movie,
+          theatreDetails: selectedShow.theatre,
+          showDetails: selectedShow,
         });
 
         if (bookingRes.data?.success) {
           createdBooking = bookingRes.data.data;
+          dispatchedEmailByServer = true;
           socket.emit('seats_booked', {
             showId: selectedShow._id,
             seatNumbers,
@@ -155,8 +161,8 @@ const PaymentPage = () => {
       }
 
       if (createdBooking) {
-        // Automatically dispatch confirmation email if backend is reachable
-        if (HAS_REACHABLE_BACKEND) {
+        // Dispatch email if booking fell back to client generation while backend is reachable
+        if (HAS_REACHABLE_BACKEND && !dispatchedEmailByServer) {
           bookingService.sendEmail(createdBooking._id || createdBooking.bookingId, {
             email: user?.email || 'chokseydev@gmail.com',
             booking: createdBooking,
