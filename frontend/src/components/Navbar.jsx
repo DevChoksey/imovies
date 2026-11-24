@@ -216,11 +216,14 @@ const Navbar = ({ selectedCity = 'Indore', setSelectedCity, onSearch }) => {
                   }}
                 >
                   <img
-                    src={user.avatar}
-                    alt={user.name}
+                    src={user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'}
+                    alt={user.name || 'User'}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }}
                   />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{user.name.split(' ')[0]}</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                    {(user.name || user.email?.split('@')[0] || 'User').trim().split(/\s+/)[0]}
+                  </span>
                   <ChevronDown size={14} color="var(--text-dim)" />
                 </button>
 

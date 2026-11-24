@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 import { useAuth } from '../context/AuthContext';
-import { bookingService, paymentService } from '../services/api';
+import { bookingService, paymentService, HAS_REACHABLE_BACKEND } from '../services/api';
 import { socket } from '../services/socket';
 import {
   CreditCard,
@@ -58,6 +58,10 @@ const PaymentPage = () => {
 
       let createdBooking = null;
       try {
+        if (!HAS_REACHABLE_BACKEND) {
+          throw new Error('Offline/Vercel static frontend mode');
+        }
+
         // 1. Process payment
         await paymentService.processPayment({
           amount: grandTotal,
@@ -151,12 +155,14 @@ const PaymentPage = () => {
       }
 
       if (createdBooking) {
-        // Automatically dispatch confirmation email to user's registered Gmail
-        bookingService.sendEmail(createdBooking._id || createdBooking.bookingId, {
-          email: user?.email || 'chokseydev@gmail.com',
-          booking: createdBooking,
-          grandTotal: createdBooking.grandTotal,
-        }).catch((e) => console.warn('Email dispatch notice:', e.message));
+        // Automatically dispatch confirmation email if backend is reachable
+        if (HAS_REACHABLE_BACKEND) {
+          bookingService.sendEmail(createdBooking._id || createdBooking.bookingId, {
+            email: user?.email || 'chokseydev@gmail.com',
+            booking: createdBooking,
+            grandTotal: createdBooking.grandTotal,
+          }).catch((e) => console.warn('Email dispatch notice:', e.message));
+        }
 
         // Guarantee persistence to user's local bookings list for /my-bookings
         try {

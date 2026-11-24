@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { bookingService } from '../services/api';
+import { bookingService, HAS_REACHABLE_BACKEND } from '../services/api';
 import {
   CheckCircle2,
   Ticket,
@@ -35,6 +35,11 @@ const BookingSuccessPage = () => {
           return;
         }
       } catch (_) {}
+
+      if (!HAS_REACHABLE_BACKEND) {
+        setLoading(false);
+        return;
+      }
 
       const fetchBooking = async () => {
         try {
@@ -95,6 +100,13 @@ Enjoy your movie!
 
   const handleSendEmailApi = async () => {
     if (!booking) return;
+    if (!HAS_REACHABLE_BACKEND) {
+      setEmailStatus(
+        'Notice: Background SMTP service is only active in local backend mode. Click "Open in Gmail" below to save your ticket directly in Gmail!'
+      );
+      return;
+    }
+
     try {
       setIsSendingEmail(true);
       setEmailStatus('Sending confirmation email...');

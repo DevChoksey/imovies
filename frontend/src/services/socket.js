@@ -1,16 +1,19 @@
 import { io } from 'socket.io-client';
+import { isEndpointReachable } from './api';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+const rawSocketUrl = import.meta.env.VITE_SOCKET_URL;
+const CAN_CONNECT_SOCKET = isEndpointReachable(rawSocketUrl);
+const SOCKET_URL = rawSocketUrl || 'http://localhost:5000';
 
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
-  reconnection: true,
+  reconnection: CAN_CONNECT_SOCKET,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
 });
 
 export const connectSocket = () => {
-  if (!socket.connected) {
+  if (CAN_CONNECT_SOCKET && !socket.connected) {
     socket.connect();
   }
 };

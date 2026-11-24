@@ -135,7 +135,7 @@ const LoginPage = () => {
 
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           Don't have an account?{' '}
-          <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+          <Link to="/register" state={location.state} style={{ color: 'var(--accent)', fontWeight: 600 }}>
             Sign Up
           </Link>
         </div>

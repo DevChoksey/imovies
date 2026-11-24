@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Film, Lock, Mail, User, Phone, Check } from 'lucide-react';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { register } = useAuth();
+
+  const redirectPath = location.state?.from?.pathname || '/';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,6 +21,11 @@ const RegisterPage = () => {
     e.preventDefault();
     setError('');
 
+    if (!name.trim()) {
+      setError('Please enter your full name');
+      return;
+    }
+
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return;
@@ -25,8 +33,8 @@ const RegisterPage = () => {
 
     try {
       setLoading(true);
-      await register(name, email, password, phone);
-      navigate('/');
+      await register(name.trim(), email.trim(), password, phone.trim());
+      navigate(redirectPath, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Registration failed');
     } finally {
@@ -188,7 +196,7 @@ const RegisterPage = () => {
 
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+          <Link to="/login" state={location.state} style={{ color: 'var(--accent)', fontWeight: 600 }}>
             Sign In
           </Link>
         </div>

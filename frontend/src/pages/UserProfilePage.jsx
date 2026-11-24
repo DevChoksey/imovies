@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { bookingService } from '../services/api';
+import { bookingService, HAS_REACHABLE_BACKEND } from '../services/api';
 import {
   Ticket,
   User,
@@ -47,15 +47,17 @@ const UserProfilePage = () => {
         console.error('Error reading local bookings:', e);
       }
 
-      // 2. Also try API if backend is running
+      // 2. Also try API if backend is reachable
       let apiList = [];
-      try {
-        const res = await bookingService.getMyBookings();
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          apiList = res.data.data;
+      if (HAS_REACHABLE_BACKEND) {
+        try {
+          const res = await bookingService.getMyBookings();
+          if (res.data?.success && Array.isArray(res.data.data)) {
+            apiList = res.data.data;
+          }
+        } catch (_) {
+          // Fallback gracefully to localList
         }
-      } catch (_) {
-        // Fallback gracefully to localList
       }
 
       // 3. Merge and deduplicate by bookingId / _id
@@ -126,12 +128,14 @@ Enjoy your movie!
     try {
       setIsCancelling(true);
 
-      // Attempt API cancel if available
-      try {
-        await bookingService.cancelBooking(cancelModalBooking._id, {
-          reason: cancelReason,
-        });
-      } catch (_) {}
+      // Attempt API cancel if backend is reachable
+      if (HAS_REACHABLE_BACKEND) {
+        try {
+          await bookingService.cancelBooking(cancelModalBooking._id, {
+            reason: cancelReason,
+          });
+        } catch (_) {}
+      }
 
       // Update in localStorage
       try {

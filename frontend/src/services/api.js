@@ -1,9 +1,20 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const isEndpointReachable = (rawUrl) => {
+  const isLocalOrigin =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const pointsToLocalhost = !rawUrl || /localhost|127\.0\.0\.1/i.test(rawUrl);
+  return isLocalOrigin || !pointsToLocalhost;
+};
+
+const rawApiUrl = import.meta.env.VITE_API_URL;
+export const HAS_REACHABLE_BACKEND = isEndpointReachable(rawApiUrl);
+const API_BASE_URL = rawApiUrl || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 4000,
   headers: {
     'Content-Type': 'application/json',
   },
