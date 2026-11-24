@@ -8,10 +8,15 @@ export const isEndpointReachable = (rawUrl) => {
   return isLocalOrigin || !pointsToLocalhost;
 };
 
+const normalizeApiBaseUrl = (rawUrl) => {
+  const trimmed = (rawUrl || 'http://localhost:5000/api').trim().replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+};
+
 const rawApiUrl = import.meta.env.VITE_API_URL;
 const isRemoteApiUrl = Boolean(rawApiUrl && !/localhost|127\.0\.0\.1/i.test(rawApiUrl));
 export const HAS_REACHABLE_BACKEND = isEndpointReachable(rawApiUrl);
-const API_BASE_URL = rawApiUrl || 'http://localhost:5000/api';
+const API_BASE_URL = normalizeApiBaseUrl(rawApiUrl);
 
 const api = axios.create({
   baseURL: API_BASE_URL,

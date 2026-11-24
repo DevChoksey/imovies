@@ -3,7 +3,10 @@ import { isEndpointReachable } from './api';
 
 const rawSocketUrl = import.meta.env.VITE_SOCKET_URL;
 const CAN_CONNECT_SOCKET = isEndpointReachable(rawSocketUrl);
-const SOCKET_URL = rawSocketUrl || 'http://localhost:5000';
+const SOCKET_URL = (rawSocketUrl || 'http://localhost:5000')
+  .trim()
+  .replace(/\/+$/, '')
+  .replace(/\/api$/, '');
 
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
