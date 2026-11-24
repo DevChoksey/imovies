@@ -15,8 +15,8 @@ const API_BASE_URL = rawApiUrl || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  // Remote cloud servers (e.g. Render free tier) can take 20-40s on cold start
-  timeout: isRemoteApiUrl ? 45000 : 4000,
+  // Remote cloud servers (e.g. Render free tier) can take 50+ seconds on cold start
+  timeout: isRemoteApiUrl ? 70000 : 4000,
   headers: {
     'Content-Type': 'application/json',
   },
