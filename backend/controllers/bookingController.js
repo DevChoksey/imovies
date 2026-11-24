@@ -384,14 +384,16 @@ const sendBookingEmail = async (req, res, next) => {
     } catch (_) {}
 
     const recipient = req.body.email || booking?.user?.email || req.user?.email || 'chokseydev@gmail.com';
-    const payloadBooking = booking || req.body.booking || {
-      _id: req.params.id,
-      bookingId: req.params.id,
-      movie: { title: 'Avengers: Doomsday' },
-      theatre: { name: 'PVR: Treasure Island Mall, Indore' },
-      show: { showDateDisplay: 'Thu, 17 December, 2026', showTime: '11:05 AM' },
-      grandTotal: req.body.grandTotal || 800,
-    };
+    const payloadBooking = booking
+      ? normalizeBookingOutput(booking)
+      : (req.body.booking || {
+          _id: req.params.id,
+          bookingId: req.params.id,
+          movie: { title: 'Avengers: Doomsday' },
+          theatre: { name: 'PVR: Treasure Island Mall, Indore' },
+          show: { showDateDisplay: 'Thu, 17 December, 2026', showTime: '11:05 AM' },
+          grandTotal: req.body.grandTotal || 800,
+        });
 
     const result = await sendBookingConfirmationEmail(payloadBooking, recipient);
 

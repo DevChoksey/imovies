@@ -24,3 +24,9 @@ services:
         sync: false
       - key: EMAIL_PASS
         sync: false
+      - key: EMAIL_WEBHOOK_URL
+        sync: false
+      - key: EMAIL_WEBHOOK_SECRET
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false

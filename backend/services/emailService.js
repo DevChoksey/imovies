@@ -2,6 +2,12 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
+const SMTP_TIMEOUTS = {
+  connectionTimeout: 8000,
+  greetingTimeout: 8000,
+  socketTimeout: 10000,
+};
+
 // Configure Email Transporter
 const createTransporter = () => {
   // Ensure fresh .env is loaded dynamically
@@ -11,6 +17,7 @@ const createTransporter = () => {
   if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     return nodemailer.createTransport({
       service: 'gmail',
+      ...SMTP_TIMEOUTS,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS, // Gmail App Password
@@ -24,6 +31,7 @@ const createTransporter = () => {
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT || 587,
       secure: process.env.SMTP_SECURE === 'true',
+      ...SMTP_TIMEOUTS,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -32,6 +40,67 @@ const createTransporter = () => {
   }
 
   return null;
+};
+
+/**
+ * Send over HTTPS Port 443 via Google Apps Script Webhook (works on Render free tier)
+ */
+const sendViaWebhook = async ({ to, subject, text, html }) => {
+  const webhookUrl = (process.env.EMAIL_WEBHOOK_URL || '').trim();
+  if (!webhookUrl) return null;
+
+  const response = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to,
+      subject,
+      text,
+      html,
+      secret: process.env.EMAIL_WEBHOOK_SECRET || '',
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Email webhook returned HTTP ${response.status}`);
+  }
+
+  const data = await response.json().catch(() => ({ success: true }));
+  if (data.success === false) {
+    throw new Error(data.error || 'Email webhook rejected request');
+  }
+  return { success: true, provider: 'https_webhook', targetEmail: to };
+};
+
+/**
+ * Send over HTTPS Port 443 via Brevo REST API (works on Render free tier)
+ */
+const sendViaBrevo = async ({ to, recipientName, subject, text, html }) => {
+  const apiKey = (process.env.BREVO_API_KEY || '').trim();
+  if (!apiKey) return null;
+
+  const senderEmail = process.env.EMAIL_USER || 'itsnightfallarchives@gmail.com';
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey,
+    },
+    body: JSON.stringify({
+      sender: { name: 'IMovies Cinema', email: senderEmail },
+      to: [{ email: to, name: recipientName || 'Movie Lover' }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Brevo API returned HTTP ${response.status}`);
+  }
+  return { success: true, provider: 'brevo_api', messageId: data.messageId, targetEmail: to };
 };
 
 /**
@@ -189,11 +258,42 @@ Please present this confirmation email at the cinema entrance.
 Thank you for booking with IMovies!
 ==================================================`;
 
+  // 1. Prefer HTTPS Email APIs (Render free tier blocks outbound SMTP ports 25/465/587)
+  if (process.env.EMAIL_WEBHOOK_URL) {
+    try {
+      const webhookResult = await sendViaWebhook({ to: targetEmail, subject, text, html });
+      if (webhookResult?.success) {
+        console.log(`[EMAIL DISPATCHED VIA WEBHOOK] Confirmation sent to ${targetEmail}`);
+        return webhookResult;
+      }
+    } catch (err) {
+      console.error(`[WEBHOOK EMAIL ERROR] ${err.message}`);
+    }
+  }
+
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const brevoResult = await sendViaBrevo({
+        to: targetEmail,
+        recipientName: userName,
+        subject,
+        text,
+        html,
+      });
+      if (brevoResult?.success) {
+        console.log(`[EMAIL DISPATCHED VIA BREVO] Confirmation sent to ${targetEmail}`);
+        return brevoResult;
+      }
+    } catch (err) {
+      console.error(`[BREVO EMAIL ERROR] ${err.message}`);
+    }
+  }
+
   if (!transporter) {
-    console.warn(`[EMAIL NOTICE] No SMTP credentials configured in .env. To send live emails, set EMAIL_USER & EMAIL_PASS.`);
+    console.warn(`[EMAIL NOTICE] No SMTP credentials configured in .env. To send live emails, set EMAIL_USER & EMAIL_PASS or EMAIL_WEBHOOK_URL.`);
     return {
       success: false,
-      notice: 'SMTP credentials not configured in backend/.env yet. Please configure EMAIL_USER and EMAIL_PASS (Gmail App Password).',
+      notice: 'Email provider not configured. Click "Open in Gmail" below to save your ticket!',
       targetEmail,
       subject,
     };
@@ -216,8 +316,12 @@ Thank you for booking with IMovies!
     };
   } catch (error) {
     console.error(`[EMAIL ERROR] Failed to send email to ${targetEmail}:`, error.message);
+    const isTimeoutOrBlocked = /timeout|ETIMEDOUT|ECONNREFUSED|EACCES/i.test(error.message);
     return {
       success: false,
+      notice: isTimeoutOrBlocked
+        ? 'Cloud host blocked SMTP ports (465/587). Add EMAIL_WEBHOOK_URL (Google Apps Script) on Render to enable HTTPS email delivery, or click "Open in Gmail" below!'
+        : error.message,
       error: error.message,
       targetEmail,
     };

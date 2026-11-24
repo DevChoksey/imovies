@@ -327,7 +327,12 @@ Enjoy your movie!
               Send full movie ticket confirmation to <strong style={{ color: '#fff' }}>{recipientEmail}</strong>
             </div>
             {emailStatus && (
-              <div style={{ fontSize: '0.8rem', color: '#60a5fa', marginTop: '6px', fontWeight: 600 }}>
+              <div style={{
+                fontSize: '0.8rem',
+                color: emailStatus.startsWith('✓') ? '#22c55e' : '#60a5fa',
+                marginTop: '6px',
+                fontWeight: 600,
+              }}>
                 {emailStatus}
               </div>
             )}
